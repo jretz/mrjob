@@ -189,3 +189,14 @@ class ReprValueProtocol(object):
 
     def write(self, key, value):
         return repr(value)
+
+
+class InRAMProtocol(object):
+    """This protocol does no encoding/decoding. It is intended to be used as
+    the internal protocol with the inram runner.
+    """
+    def read(self, line):
+        return line
+
+    def write(self, key, value):
+        return (key, value)

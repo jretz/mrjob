@@ -164,9 +164,9 @@ class MRJobLauncher(object):
         elif self.options.runner == 'hadoop':
             return HadoopJobRunner(**self.hadoop_job_runner_kwargs())
 
-        elif self.options.runner == 'inline':
-            raise ValueError("inline is not supported in the multi-lingual"
-                             " launcher.")
+        elif self.options.runner in ('inline', 'inram'):
+            raise ValueError("%s is not supported in the multi-lingual"
+                             " launcher." % self.options.runner)
 
         else:
             # run locally by default
@@ -520,6 +520,17 @@ class MRJobLauncher(object):
         """Keyword arguments to create create runners when
         :py:meth:`make_runner` is called, when we run a job locally
         (``-r inline``).
+
+        :return: map from arg name to value
+
+        Re-define this if you want finer control when running jobs locally.
+        """
+        return self.job_runner_kwargs()
+
+    def inram_job_runner_kwargs(self):
+        """Keyword arguments to create create runners when
+        :py:meth:`make_runner` is called, when we run a job locally
+        (``-r inram``).
 
         :return: map from arg name to value
 

@@ -53,12 +53,12 @@ class SimRunnerOptionStore(RunnerOptionStore):
 class SimMRJobRunner(MRJobRunner):
     """Abstract base class for runners for testing jobs in development
 
-    The inline and local runners inherit from this class so functionality
-    common to them has been moved here.:py:method:`_run_step` must be overriden
-    by classes that extend SimMRJobRunner
+    The inline, inram, and local runners inherit from this class so
+    functionality common to them has been moved here.:py:method:`_run_step`
+    must be overriden by classes that extend SimMRJobRunner
 
-    :py:class:`LocalMRJobRunner` and :py:class:`InlineMRJobRunner` simulate
-    the following jobconf variables:
+    :py:class:`LocalMRJobRunner`, :py:class:`InlineMRJobRunner`, and
+    :py:class:`InRAMMRJobRunner` simulate the following jobconf variables:
 
     * ``mapreduce.job.cache.archives``
     * ``mapreduce.job.cache.files``
@@ -174,6 +174,15 @@ class SimMRJobRunner(MRJobRunner):
         self._create_setup_wrapper_script()
         self._setup_output_dir()
 
+        self._run_steps()
+
+        # move final output to output directory
+        for i, outfile in enumerate(self._prev_outfiles):
+            final_outfile = os.path.join(self._output_dir, 'part-%05d' % i)
+            log.info('Moving %s -> %s' % (outfile, final_outfile))
+            shutil.move(outfile, final_outfile)
+
+    def _run_steps(self):
         # run mapper, combiner, sort, reducer for each step
         for step_num, step in enumerate(self._get_steps()):
             self._check_step_works_with_runner(step)
@@ -193,12 +202,6 @@ class SimMRJobRunner(MRJobRunner):
 
                 # run the reducer
                 self._invoke_step(step_num, 'reducer')
-
-        # move final output to output directory
-        for i, outfile in enumerate(self._prev_outfiles):
-            final_outfile = os.path.join(self._output_dir, 'part-%05d' % i)
-            log.info('Moving %s -> %s' % (outfile, final_outfile))
-            shutil.move(outfile, final_outfile)
 
     def _invoke_step(self, step_num, step_type):
         """Run the mapper or reducer for the given step.
@@ -490,7 +493,7 @@ class SimMRJobRunner(MRJobRunner):
             cache_local_archives.append(os.path.join(working_dir, name))
 
         # TODO: could add mtime info here too (e.g.
-        # mapreduce.job.cache.archives.timestamps) here too
+        # mapreduce.job.cache.archives.timestamps)
         j['mapreduce.job.cache.files'] = (','.join(cache_files))
         j['mapreduce.job.cache.local.files'] = (','.join(cache_local_files))
         j['mapreduce.job.cache.archives'] = (','.join(cache_archives))

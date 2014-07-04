@@ -645,7 +645,8 @@ class MRJobRunner(object):
         ``hadoop version``. :py:class:`~mrjob.local.LocalMRJobRunner` has an
         additional `hadoop_version` option to specify which version it
         simulates, with a default of 0.20.
-        :py:class:`~mrjob.inline.InlineMRJobRunner` does not simulate Hadoop at
+        :py:class:`~mrjob.inline.InlineMRJobRunner` ang
+        :py:class:`~mrjob.inram.InRAMMRJobRunner` do not simulate Hadoop at
         all.
         """
         return None

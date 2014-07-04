@@ -79,6 +79,8 @@ class MRJob(MRJobLauncher):
     # inline can be the default because we have the class object in the same
     # process as the launcher
     _DEFAULT_RUNNER = 'inline'
+    _DEFAULT_READER = None
+    _DEFAULT_WRITER = None
 
     def __init__(self, args=None):
         """Entry point for running your job from other Python code.
@@ -493,11 +495,14 @@ class MRJob(MRJobLauncher):
                                  " probably means you tried to use it from"
                                  " __main__, which doesn't work." % w)
 
-        # support inline runner when running from the MRJob itself
-        from mrjob.inline import InlineMRJobRunner
-
+        # support inline and inram runners when running from the MRJob itself
         if self.options.runner == 'inline':
+            from mrjob.inline import InlineMRJobRunner
             return InlineMRJobRunner(mrjob_cls=self.__class__,
+                                     **self.inline_job_runner_kwargs())
+        elif self.options.runner == 'inram':
+            from mrjob.inram import InRAMMRJobRunner
+            return InRAMMRJobRunner(mrjob_cls=self.__class__,
                                      **self.inline_job_runner_kwargs())
 
         return super(MRJob, self).make_runner()
@@ -670,7 +675,10 @@ class MRJob(MRJobLauncher):
         paths = self.args or ['-']
         for path in paths:
             for line in read_input(path, stdin=self.stdin):
-                yield line
+                yield line.rstrip('\r\n')
+
+    def _write_output(self, output):
+        print >> self.stdout, output
 
     def _wrap_protocols(self, step_num, step_type):
         """Pick the protocol classes to use for reading and writing
@@ -691,12 +699,23 @@ class MRJob(MRJobLauncher):
         """
         read, write = self.pick_protocols(step_num, step_type)
 
+        if self._DEFAULT_READER is None:
+            _reader = self._read_input
+        else:
+            _reader = self._DEFAULT_READER
+
+        if self._DEFAULT_WRITER is None:
+            _writer = self._write_output
+        else:
+            _writer = self._DEFAULT_WRITER
+
         def read_lines():
-            for line in self._read_input():
+            for line in _reader():
                 try:
-                    key, value = read(line.rstrip('\r\n'))
+                    key, value = read(line)
                     yield key, value
                 except Exception, e:
+                    raise  # TODO no should be here
                     if self.options.strict_protocols:
                         raise
                     else:
@@ -705,8 +724,9 @@ class MRJob(MRJobLauncher):
 
         def write_line(key, value):
             try:
-                print >> self.stdout, write(key, value)
+                _writer(write(key, value))
             except Exception, e:
+                raise  # TODO no should be here
                 if self.options.strict_protocols:
                     raise
                 else:
